@@ -433,6 +433,9 @@ public class AutoKitModule extends ToggleableModule {
             }
 
             if (mc.player.getBoundingBox().intersects(new AABB(placeLocation))) {
+                if (mc.player.getInventory().selected != 1) {
+                    mc.player.getInventory().selected = 1;
+                }
                 List<Direction> dirs = List.of(Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH);
                 for (Direction dir : dirs) {
                     BlockPos pos = placeLocation.relative(dir, 3);
@@ -442,7 +445,7 @@ public class AutoKitModule extends ToggleableModule {
                 }
             }
 
-            if (mc.player.position().distanceTo(placeLocation.getCenter()) < 2) {
+            if (mc.player.position().distanceTo(placeLocation.getCenter()) < 4) {
                 if (mc.player.getInventory().selected != 1) {
                     mc.player.getInventory().selected = 1;
                     ticksSinceLastMove = 0;
