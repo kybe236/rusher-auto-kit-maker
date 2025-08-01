@@ -65,8 +65,8 @@ public class AutoKitModule extends ToggleableModule {
     private int ticksSinceLastMove = 0;
     private int ticksSinceChestOpen = 0;
 
-    private State state = State.Steal;
-    private boolean shulkerPlacedToTakeItems = false;
+    public State state = State.Steal;
+    public boolean shulkerPlacedToTakeItems = false;
 
     public ChestStoreManager chestStoreManager = new ChestStoreManager();
 
