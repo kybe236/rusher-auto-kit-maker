@@ -2,6 +2,8 @@ package de.kybe.autokitmaker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.game.ClientboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
@@ -13,6 +15,7 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.ShulkerBoxMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.ChestBlock;
@@ -30,7 +33,6 @@ import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
 import org.rusherhack.client.api.render.IRenderer3D;
 import org.rusherhack.client.api.utils.ChatUtils;
-import org.rusherhack.client.api.utils.ItemUtils;
 import org.rusherhack.core.event.subscribe.Subscribe;
 import org.rusherhack.core.setting.BooleanSetting;
 import org.rusherhack.core.setting.NumberSetting;
@@ -226,7 +228,6 @@ public class AutoKitModule extends ToggleableModule {
                         return;
                     }
 
-                    // ----
                     for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                         ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                         if (slotItem.isEmpty()) continue;
@@ -247,11 +248,10 @@ public class AutoKitModule extends ToggleableModule {
                         ticksSinceLastMove = 0;
                         return;
                     }
-                    // ----
 
                     for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                         if (!isShulker(menu.slots.get(upperSlot).getItem())) continue;
-                        List<ItemStack> items = ItemUtils.getContainerItemsFromStack(menu.slots.get(upperSlot).getItem());
+                        List<ItemStack> items = Utils.getContainerItemsFromStack(menu.slots.get(upperSlot).getItem());
                         for (ItemStack item1 : items) {
                             if (item1.isEmpty()) continue;
                             if (!inv.getSafe(slot).matches(item1, !enchantSensitive.getValue())) continue;

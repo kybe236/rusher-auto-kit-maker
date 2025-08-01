@@ -2,7 +2,6 @@ package de.kybe.autokitmaker;
 
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
-import org.rusherhack.client.api.utils.ItemUtils;
 
 import java.util.*;
 
@@ -22,7 +21,7 @@ public class ChestInventory {
         expandedItems.clear();
         for (ItemStack item : items) {
             if (AutoKitModule.isShulker(item)) {
-                List<ItemStack> inner = ItemUtils.getContainerItemsFromStack(item);
+                List<ItemStack> inner = Utils.getContainerItemsFromStack(item);
                 if (inner != null) {
                     expandedItems.addAll(inner);
                 }
