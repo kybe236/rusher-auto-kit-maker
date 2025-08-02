@@ -40,7 +40,7 @@ To start the kit making
 3. enable `AutoKitMaker`
 
 
-# Debuging
+# Debugging
 If your trying to restart the kit maker:
 1. disable the module
 2. write `*auto-kit reset-state` in chat
