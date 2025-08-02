@@ -92,7 +92,7 @@ public class AutoKitCommand extends Command {
         return String.join(", ", KitManager.listKits());
     }
 
-    @CommandExecutor(subCommand = "reset")
+    @CommandExecutor(subCommand = "reset-state")
     private String resetCmd() {
         AutoKitModule.INSTANCE.state = AutoKitModule.State.Steal;
         AutoKitModule.INSTANCE.shulkerPlacedToTakeItems = false;
