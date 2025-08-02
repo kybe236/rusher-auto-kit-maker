@@ -233,7 +233,7 @@ public class AutoKitModule extends ToggleableModule {
                             return;
                         }
 
-                        for (int upperSlot = 0; upperSlot < size; upperSlot++) {
+                        for (int upperSlot = size - 1; upperSlot >= 0; upperSlot--) {
                             ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                             if (slotItem.isEmpty()) continue;
                             if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue())) continue;
@@ -474,6 +474,9 @@ public class AutoKitModule extends ToggleableModule {
                 BaritoneUtils.goToExact(placeLocation);
             }
         } else if (state == State.Fill) {
+            if (!(mc.level.getBlockState(placeLocation).getBlock() instanceof ShulkerBoxBlock)) {
+                state = State.PlaceShulker;
+            }
             if (mc.player.containerMenu instanceof ShulkerBoxMenu menu) {
                 int size = 27; // CONTAINER_SIZE
                 int id = menu.containerId;
