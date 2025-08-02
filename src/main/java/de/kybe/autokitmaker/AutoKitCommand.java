@@ -82,7 +82,7 @@ public class AutoKitCommand extends Command {
     }
 
     @CommandExecutor(subCommand = "clear-chests")
-    private String clearChests(String from, String to) {
+    private String clearChests() {
         AutoKitModule.INSTANCE.chestStoreManager.clearChests();
         return "Cleared Chests";
     }
