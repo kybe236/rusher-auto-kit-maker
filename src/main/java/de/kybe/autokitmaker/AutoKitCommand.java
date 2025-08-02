@@ -25,6 +25,41 @@ public class AutoKitCommand extends Command {
         ChatUtils.print("Saved current inventory as kit: " + name);
     }
 
+    @CommandExecutor(subCommand = "remove-kit")
+    @CommandExecutor.Argument("string")
+    @SuppressWarnings("unused")
+    private String remove(String name) {
+        if (name == null || name.isEmpty()) {
+            return "Please provide a valid kit name to remove.";
+        }
+        File kitFile = new File("rusherhack/autokit", name + ".json");
+        if (!kitFile.exists()) {
+            return "No kit found with name: " + name;
+        }
+        if (kitFile.delete()) {
+            return "Kit removed: " + name;
+        } else {
+            return "Failed to remove kit: " + name;
+        }
+    }
+
+    @CommandExecutor(subCommand = "rename-kits")
+    @CommandExecutor.Argument({"string", "string"})
+    @SuppressWarnings("unused")
+    private String rename(String from, String to) {
+        if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
+            return "Please provide both original and new kit names.";
+        }
+        KitManager.rename(from, to);
+        return"Renamed kit from '" + from + "' to '" + to + "'.";
+    }
+
+    @CommandExecutor(subCommand = "list-kits")
+    @SuppressWarnings("unused")
+    private String list() {
+        return String.join(", ", KitManager.listKits());
+    }
+
     @CommandExecutor(subCommand = "resultChest")
     @SuppressWarnings("unused")
     private String depositChest() {
@@ -58,46 +93,12 @@ public class AutoKitCommand extends Command {
         return "success";
     }
 
-    @CommandExecutor(subCommand = "remove")
-    @CommandExecutor.Argument("string")
-    @SuppressWarnings("unused")
-    private String remove(String name) {
-        if (name == null || name.isEmpty()) {
-            return "Please provide a valid kit name to remove.";
-        }
-        File kitFile = new File("rusherhack/autokit", name + ".json");
-        if (!kitFile.exists()) {
-            return "No kit found with name: " + name;
-        }
-        if (kitFile.delete()) {
-            return "Kit removed: " + name;
-        } else {
-            return "Failed to remove kit: " + name;
-        }
-    }
-
-    @CommandExecutor(subCommand = "rename")
-    @CommandExecutor.Argument({"string", "string"})
-    @SuppressWarnings("unused")
-    private String rename(String from, String to) {
-        if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
-            return "Please provide both original and new kit names.";
-        }
-        KitManager.rename(from, to);
-        return"Renamed kit from '" + from + "' to '" + to + "'.";
-    }
 
     @CommandExecutor(subCommand = "clear-chests")
     @SuppressWarnings("unused")
     private String clearChests() {
         AutoKitModule.INSTANCE.chestStoreManager.clearChests();
         return "Cleared Chests";
-    }
-
-    @CommandExecutor(subCommand = "list")
-    @SuppressWarnings("unused")
-    private String list() {
-        return String.join(", ", KitManager.listKits());
     }
 
     @CommandExecutor(subCommand = "reset-state")

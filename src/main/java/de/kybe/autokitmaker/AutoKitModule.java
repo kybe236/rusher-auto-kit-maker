@@ -122,12 +122,20 @@ public class AutoKitModule extends ToggleableModule {
         return chestInventory;
     }
 
+    boolean warned = false;
+
 
     @Subscribe
     @SuppressWarnings({"unused", "DuplicatedCode"})
     private void onUpdate(EventUpdate  event) {
         if (mc.player == null || mc.gameMode == null || mc.level == null)
             return;
+
+        if (!warned && debug.getValue()) {
+            ChatUtils.print("debug may show your coords only use it when your debuging and not live");
+            debug.setValue(false);
+            warned = true;
+        }
 
         if (addChests.getValue()) {
             if (openChest == null) return;
