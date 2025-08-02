@@ -2,6 +2,8 @@ package de.kybe.autokitmaker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.game.ClientboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
@@ -28,6 +30,7 @@ import org.rusherhack.client.api.events.render.EventRender3D;
 import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
 import org.rusherhack.client.api.render.IRenderer3D;
+import org.rusherhack.client.api.ui.window.view.RichTextView;
 import org.rusherhack.client.api.utils.ChatUtils;
 import org.rusherhack.core.event.subscribe.Subscribe;
 import org.rusherhack.core.setting.BooleanSetting;
@@ -110,7 +113,7 @@ public class AutoKitModule extends ToggleableModule {
     private void onPacketReceive(EventPacket.Receive event) {
         if (event.getPacket() instanceof ClientboundContainerClosePacket) openChest = null;
     }
-
+c
     public ChestInventory getChestInventoryFromScreen() {
         if (mc.player == null) return null;
         if (!(mc.player.containerMenu instanceof ChestMenu chestMenu)) return null;
@@ -122,20 +125,12 @@ public class AutoKitModule extends ToggleableModule {
         return chestInventory;
     }
 
-    boolean warned = false;
-
 
     @Subscribe
     @SuppressWarnings({"unused", "DuplicatedCode"})
     private void onUpdate(EventUpdate  event) {
         if (mc.player == null || mc.gameMode == null || mc.level == null)
             return;
-
-        if (!warned && debug.getValue()) {
-            ChatUtils.print("debug may show your coords only use it when your debuging and not live");
-            debug.setValue(false);
-            warned = true;
-        }
 
         if (addChests.getValue()) {
             if (openChest == null) return;
