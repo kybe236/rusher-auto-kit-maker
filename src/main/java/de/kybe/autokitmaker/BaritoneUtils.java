@@ -6,6 +6,7 @@ import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalNear;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import org.jetbrains.annotations.NotNull;
 import org.rusherhack.client.api.utils.ChatUtils;
 
 import java.util.ArrayList;
@@ -26,27 +27,13 @@ public class BaritoneUtils {
         baritone.getCustomGoalProcess().setGoalAndPath(new GoalNear(pos, 3));
     }
 
+    @SuppressWarnings("DuplicatedCode")
     public static void gotoChest(BlockPos chest) {
         if (mc.level == null || mc.player == null) return;
 
         List<Direction> dirs = List.of(Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH);
         int playerY = mc.player.blockPosition().getY();
-        int chestY = chest.getY();
-
-        List<Integer> offsets = new ArrayList<>();
-
-        int maxUpOffset = 3;
-        int maxDownOffset = 6;
-
-        offsets.add(playerY - chestY);
-
-        if (chestY < playerY) {
-            for (int i = 1; i <= maxUpOffset; i++) offsets.add(i);
-            for (int i = 1; i <= maxDownOffset; i++) offsets.add(-i);
-        } else {
-            for (int i = 1; i <= maxDownOffset; i++) offsets.add(-i);
-            for (int i = 1; i <= maxUpOffset; i++) offsets.add(i);
-        }
+        List<Integer> offsets = getIntegers(chest.getY(), playerY);
 
         offsets = offsets.stream().filter(o -> o >= -6 && o <= 6).toList();
 
@@ -70,27 +57,31 @@ public class BaritoneUtils {
         ChatUtils.print("Failed to Navigate to Chest");
     }
 
-    public static void gotoDoubleChest(BlockPos chest1, BlockPos chest2) {
-        if (mc.level == null || mc.player == null) return;
-
-        List<Direction> dirs = List.of(Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH);
-        int playerY = mc.player.blockPosition().getY();
-        int chestY = Math.min(chest1.getY(), chest2.getY());
-
+    private static @NotNull List<Integer> getIntegers(int chest, int playerY) {
         List<Integer> offsets = new ArrayList<>();
 
         int maxUpOffset = 3;
         int maxDownOffset = 6;
 
-        offsets.add(playerY - chestY);
+        offsets.add(playerY - chest);
 
-        if (chestY < playerY) {
+        if (chest < playerY) {
             for (int i = 1; i <= maxUpOffset; i++) offsets.add(i);
             for (int i = 1; i <= maxDownOffset; i++) offsets.add(-i);
         } else {
             for (int i = 1; i <= maxDownOffset; i++) offsets.add(-i);
             for (int i = 1; i <= maxUpOffset; i++) offsets.add(i);
         }
+        return offsets;
+    }
+
+    @SuppressWarnings("DuplicatedCode")
+    public static void gotoDoubleChest(BlockPos chest1, BlockPos chest2) {
+        if (mc.level == null || mc.player == null) return;
+
+        List<Direction> dirs = List.of(Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH);
+        int playerY = mc.player.blockPosition().getY();
+        List<Integer> offsets = getIntegers(Math.min(chest1.getY(), chest2.getY()), playerY);
 
         offsets = offsets.stream().filter(o -> o >= -6 && o <= 6).toList();
 
@@ -122,8 +113,8 @@ public class BaritoneUtils {
     }
 
 
-    public static boolean isBaritonePathing() {
-        return baritone.getPathingBehavior().isPathing();
+    public static boolean isBaritoneNotPathing() {
+        return !baritone.getPathingBehavior().isPathing();
     }
 
     public static void stopBaritone() {

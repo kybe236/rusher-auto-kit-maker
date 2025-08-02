@@ -15,6 +15,7 @@ public class AutoKitCommand extends Command {
 
     @CommandExecutor(subCommand = "add-kit")
     @CommandExecutor.Argument("string")
+    @SuppressWarnings("unused")
     private void add(String name) {
         if (name == null || name.isEmpty()) {
             ChatUtils.print("Please provide a valid kit name.");
@@ -25,6 +26,7 @@ public class AutoKitCommand extends Command {
     }
 
     @CommandExecutor(subCommand = "resultChest")
+    @SuppressWarnings("unused")
     private String depositChest() {
         if (mc.hitResult == null) return "No HitResult";
         if (mc.player == null) return "No Player!";
@@ -35,6 +37,7 @@ public class AutoKitCommand extends Command {
     }
 
     @CommandExecutor(subCommand = "shulkerChest")
+    @SuppressWarnings("unused")
     private String shulkerChest() {
         if (mc.hitResult == null) return "No HitResult";
         if (mc.player == null) return "No Player!";
@@ -45,6 +48,7 @@ public class AutoKitCommand extends Command {
     }
 
     @CommandExecutor(subCommand = "placeLocation")
+    @SuppressWarnings("unused")
     private String placeLocation() {
         if (mc.hitResult == null) return "No HitResult";
         if (mc.player == null) return "No Player!";
@@ -56,6 +60,7 @@ public class AutoKitCommand extends Command {
 
     @CommandExecutor(subCommand = "remove")
     @CommandExecutor.Argument("string")
+    @SuppressWarnings("unused")
     private String remove(String name) {
         if (name == null || name.isEmpty()) {
             return "Please provide a valid kit name to remove.";
@@ -73,6 +78,7 @@ public class AutoKitCommand extends Command {
 
     @CommandExecutor(subCommand = "rename")
     @CommandExecutor.Argument({"string", "string"})
+    @SuppressWarnings("unused")
     private String rename(String from, String to) {
         if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
             return "Please provide both original and new kit names.";
@@ -82,17 +88,20 @@ public class AutoKitCommand extends Command {
     }
 
     @CommandExecutor(subCommand = "clear-chests")
+    @SuppressWarnings("unused")
     private String clearChests() {
         AutoKitModule.INSTANCE.chestStoreManager.clearChests();
         return "Cleared Chests";
     }
 
     @CommandExecutor(subCommand = "list")
+    @SuppressWarnings("unused")
     private String list() {
         return String.join(", ", KitManager.listKits());
     }
 
     @CommandExecutor(subCommand = "reset-state")
+    @SuppressWarnings("unused")
     private String resetCmd() {
         AutoKitModule.INSTANCE.state = AutoKitModule.State.Steal;
         AutoKitModule.INSTANCE.shulkerPlacedToTakeItems = false;

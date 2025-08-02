@@ -6,20 +6,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoKitInventory {
-    private static final int INVENTORY_SIZE = 36;
-    private static final int HOTBAR_SIZE = 9;
-
     @SerializedName("items")
     public List<AutoKitItem> items;
 
     public AutoKitInventory() {
-        this.items = fill("block.minecraft.air", INVENTORY_SIZE - HOTBAR_SIZE);
+        this.items = fill();
     }
 
-    private static List<AutoKitItem> fill(String itemId, int count) {
-        List<AutoKitItem> list = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            list.add(new AutoKitItem(itemId));
+    private static List<AutoKitItem> fill() {
+        List<AutoKitItem> list = new ArrayList<>(27);
+        for (int i = 0; i < 27; i++) {
+            list.add(new AutoKitItem("block.minecraft.air"));
         }
         return list;
     }

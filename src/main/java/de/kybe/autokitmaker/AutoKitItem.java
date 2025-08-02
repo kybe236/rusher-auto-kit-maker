@@ -19,6 +19,7 @@ public class AutoKitItem {
     public int maxStackCount;
 
 
+    @SuppressWarnings("unused")
     public AutoKitItem() {
         this.item = "";
         this.enchantments = new ArrayList<>();
@@ -41,14 +42,6 @@ public class AutoKitItem {
         if (ignoreEnchants) return true;
 
         return Set.copyOf(enchantments).equals(Set.copyOf(Utils.itemStackToEnchants(otherStack)));
-    }
-
-    public boolean matches(AutoKitItem otherStack, boolean ignoreEnchants) {
-        if (otherStack == null) return false;
-        if (!this.item.equals(otherStack.item)) return false;
-        if (ignoreEnchants) return true;
-
-        return Set.copyOf(this.enchantments).equals(Set.copyOf(otherStack.enchantments));
     }
 
     public boolean isAir() {

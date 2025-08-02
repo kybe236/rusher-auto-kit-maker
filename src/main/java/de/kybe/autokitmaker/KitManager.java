@@ -28,8 +28,7 @@ public class KitManager {
         try (FileWriter writer = new FileWriter(file)) {
             GSON.toJson(inventory, writer);
         } catch (IOException e) {
-            e.printStackTrace();
-            ChatUtils.print("Failed to save inventory: " + name);
+            ChatUtils.print("Failed to save inventory: " + name + " " + e);
         }
     }
 
@@ -59,8 +58,7 @@ public class KitManager {
         try (FileReader reader = new FileReader(file)) {
             return GSON.fromJson(reader, AutoKitInventory.class);
         } catch (IOException e) {
-            e.printStackTrace();
-            ChatUtils.print("Failed to load inventory: " + name);
+            ChatUtils.print("Failed to load inventory: " + name  + " " + e);
             return null;
         }
     }

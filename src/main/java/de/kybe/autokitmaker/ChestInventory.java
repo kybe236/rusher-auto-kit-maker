@@ -6,8 +6,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 public class ChestInventory {
-    private List<ItemStack> items = new ArrayList<>();
-    private List<ItemStack> expandedItems = new ArrayList<>();
+    private final List<ItemStack> items = new ArrayList<>();
+    private final List<ItemStack> expandedItems = new ArrayList<>();
 
     private static String normalizeName(@Nullable String name) {
         return name == null ? "" : name;
@@ -53,10 +53,6 @@ public class ChestInventory {
         return false;
     }
 
-    public boolean hasItem(AutoKitItem otherItem, boolean enchantSensitive) {
-        return hasItem(otherItem, enchantSensitive, null);
-    }
-
     public boolean hasItem(AutoKitItem otherItem, boolean enchantSensitive, @Nullable String customName) {
         String targetName = normalizeName(customName);
         for (ItemStack item : getItems()) {
@@ -85,15 +81,5 @@ public class ChestInventory {
             counts.put(name, counts.getOrDefault(name, 0) + item.getCount());
         }
         return counts;
-    }
-
-    public List<ItemStack> getItems(AutoKitItem otherItem, boolean enchantSensitive, @Nullable String customName) {
-        List<ItemStack> list = new ArrayList<>();
-        String targetName = normalizeName(customName);
-        for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive)) continue;
-            if (getItemCustomName(item).equals(targetName)) list.add(item);
-        }
-        return list;
     }
 }

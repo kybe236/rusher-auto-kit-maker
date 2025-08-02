@@ -29,6 +29,7 @@ public class Utils {
     public static List<ItemStack> getContainerItemsFromStack(ItemStack stack) {
         if(stack.has(DataComponents.CONTAINER)) {
             final ItemContainerContents itemContainerContents = stack.get(DataComponents.CONTAINER);
+            if (itemContainerContents == null) return null;
             final NonNullList<ItemStack> stacks = NonNullList.withSize(27, ItemStack.EMPTY);
             itemContainerContents.copyInto(stacks);
             return stacks;

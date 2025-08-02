@@ -4,6 +4,7 @@ import org.rusherhack.client.api.RusherHackAPI;
 import org.rusherhack.client.api.plugin.Plugin;
 
 
+@SuppressWarnings("unused")
 public class AutoKitMaker extends Plugin {
     @Override
     public void onLoad() {

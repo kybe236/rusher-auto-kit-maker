@@ -26,28 +26,6 @@ public class ChestStoreManager {
         return chests;
     }
 
-    public Optional<Chest> getChestContaining(AutoKitItem item, boolean enchantSensitive, @Nullable String customName) {
-        for (Chest chest: chests) {
-            if (chest.inv.hasItem(item, enchantSensitive, customName)) return Optional.of(chest);
-        }
-        return Optional.empty();
-    }
-
-    public Optional<Chest> getChestContaining(
-            AutoKitItem item,
-            boolean enchantSensitive,
-            @Nullable String customName,
-            int minQuantity
-    ) {
-        for (Chest chest : chests) {
-            int count = chest.inv.getItemCount(item, enchantSensitive, customName);
-            if (count >= minQuantity) {
-                return Optional.of(chest);
-            }
-        }
-        return Optional.empty();
-    }
-
     public Map<String, Integer> getMatchingItemCountsByNameAcrossAllChests(AutoKitItem otherItem, boolean enchantSensitive) {
         Map<String, Integer> total = new HashMap<>();
         for (Chest chest : chests) {
@@ -109,21 +87,21 @@ public class ChestStoreManager {
         return Optional.empty();
     }
 
-    public boolean hasTotalQuantity(ItemStack target, int totalRequired, @Nullable ChestInventory extra) {
+    public boolean hasNotTotalQuantity(ItemStack target, int totalRequired, @Nullable ChestInventory extra) {
         AutoKitItem item = new AutoKitItem(target);
         int found = 0;
         String customName = target.getCustomName() == null ? null : target.getCustomName().getString();
 
         // Helper to accumulate from any ChestInventory
         found += countFromInventory(extra, item, customName, totalRequired, "extra");
-        if (found >= totalRequired) return true;
+        if (found >= totalRequired) return false;
 
         for (Chest chest : chests) {
             found += countFromInventory(chest.inv, item, customName, totalRequired, "chest");
-            if (found >= totalRequired) return true;
+            if (found >= totalRequired) return false;
         }
 
-        return false;
+        return true;
     }
 
     private int countFromInventory(ChestInventory inv, AutoKitItem item, String customName, int totalRequired, String sourceTag) {
@@ -131,12 +109,5 @@ public class ChestStoreManager {
         int count = inv.getItemCount(item, false, customName);
         ChatUtils.print("FOUND (so far): " + count + " REQUIRED: " + totalRequired + " FROM: " + sourceTag);
         return count;
-    }
-
-    public Optional<Chest> getChestContaining(ItemStack item) {
-        for (Chest chest: chests) {
-            if (chest.inv.hasItem(item)) return Optional.of(chest);
-        }
-        return Optional.empty();
     }
 }
