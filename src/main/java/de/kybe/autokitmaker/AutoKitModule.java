@@ -113,7 +113,7 @@ public class AutoKitModule extends ToggleableModule {
     private void onPacketReceive(EventPacket.Receive event) {
         if (event.getPacket() instanceof ClientboundContainerClosePacket) openChest = null;
     }
-c
+
     public ChestInventory getChestInventoryFromScreen() {
         if (mc.player == null) return null;
         if (!(mc.player.containerMenu instanceof ChestMenu chestMenu)) return null;
