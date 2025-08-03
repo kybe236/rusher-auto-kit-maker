@@ -36,12 +36,23 @@ public class AutoKitItem {
         this.enchantments = List.of();
     }
 
-    public boolean matches(ItemStack otherStack, boolean ignoreEnchants) {
+    public boolean matches(ItemStack otherStack, boolean ignoreEnchants, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         if (otherStack == null) return false;
         if (!this.item.equals(otherStack.getItem().getDescriptionId())) return false;
         if (ignoreEnchants) return true;
 
-        return Set.copyOf(enchantments).equals(Set.copyOf(Utils.itemStackToEnchants(otherStack)));
+        Set<String> otherEnchants = Set.copyOf(Utils.itemStackToEnchants(otherStack));
+        Set<String> requiredEnchants = Set.copyOf(enchantments);
+
+        if (onlySpecificEnchantsMatterToggled) {
+            if (onlySpecificEnchantsMatter != null && !onlySpecificEnchantsMatter.isEmpty()) {
+                return otherEnchants.contains(onlySpecificEnchantsMatter);
+            } else {
+                return requiredEnchants.equals(otherEnchants);
+            }
+        } else {
+            return requiredEnchants.equals(otherEnchants);
+        }
     }
 
     public boolean isAir() {

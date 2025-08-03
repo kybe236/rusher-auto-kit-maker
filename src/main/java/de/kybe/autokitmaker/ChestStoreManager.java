@@ -26,10 +26,10 @@ public class ChestStoreManager {
         return chests;
     }
 
-    public Map<String, Integer> getMatchingItemCountsByNameAcrossAllChests(AutoKitItem otherItem, boolean enchantSensitive) {
+    public Map<String, Integer> getMatchingItemCountsByNameAcrossAllChests(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         Map<String, Integer> total = new HashMap<>();
         for (Chest chest : chests) {
-            Map<String, Integer> chestCounts = chest.inv.getMatchingItemCountsByName(otherItem, enchantSensitive);
+            Map<String, Integer> chestCounts = chest.inv.getMatchingItemCountsByName(otherItem, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter);
             chestCounts.forEach((name, count) -> total.merge(name, count, Integer::sum));
         }
         return total;
@@ -51,9 +51,11 @@ public class ChestStoreManager {
     public Optional<List<BlockPos>> getChest(
             AutoKitItem item,
             boolean enchantSensitive,
+            boolean onlySpecificEnchantsMatterToggled,
+            String onlySpecificEnchantsMatter,
             int minCount
     ) {
-        Map<String, Integer> counts = getMatchingItemCountsByNameAcrossAllChests(item, enchantSensitive);
+        Map<String, Integer> counts = getMatchingItemCountsByNameAcrossAllChests(item, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter);
 
         List<Map.Entry<String, Integer>> candidates = new ArrayList<>(counts.entrySet());
         candidates.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
@@ -69,7 +71,7 @@ public class ChestStoreManager {
             int remaining = minCount;
 
             for (Chest chest : chests) {
-                int inThisChest = chest.inv.getItemCount(item, enchantSensitive, customName);
+                int inThisChest = chest.inv.getItemCount(item, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter, customName);
                 if (inThisChest <= 0) {
                     continue;
                 }
@@ -87,26 +89,26 @@ public class ChestStoreManager {
         return Optional.empty();
     }
 
-    public boolean hasNotTotalQuantity(ItemStack target, int totalRequired, @Nullable ChestInventory extra) {
+    public boolean hasNotTotalQuantity(ItemStack target, int totalRequired, @Nullable ChestInventory extra, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         AutoKitItem item = new AutoKitItem(target);
         int found = 0;
         String customName = target.getCustomName() == null ? null : target.getCustomName().getString();
 
         // Helper to accumulate from any ChestInventory
-        found += countFromInventory(extra, item, customName, totalRequired, "extra");
+        found += countFromInventory(extra, item, customName, totalRequired, "extra", enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter);
         if (found >= totalRequired) return false;
 
         for (Chest chest : chests) {
-            found += countFromInventory(chest.inv, item, customName, totalRequired, "chest");
+            found += countFromInventory(chest.inv, item, customName, totalRequired, "chest", enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter);
             if (found >= totalRequired) return false;
         }
 
         return true;
     }
 
-    private int countFromInventory(ChestInventory inv, AutoKitItem item, String customName, int totalRequired, String sourceTag) {
+    private int countFromInventory(ChestInventory inv, AutoKitItem item, String customName, int totalRequired, String sourceTag, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         if (inv == null) return 0;
-        int count = inv.getItemCount(item, false, customName);
+        int count = inv.getItemCount(item, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter, customName);
         ChatUtils.print("FOUND (so far): " + count + " REQUIRED: " + totalRequired + " FROM: " + sourceTag);
         return count;
     }

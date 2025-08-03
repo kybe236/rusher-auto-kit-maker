@@ -53,29 +53,29 @@ public class ChestInventory {
         return false;
     }
 
-    public boolean hasItem(AutoKitItem otherItem, boolean enchantSensitive, @Nullable String customName) {
+    public boolean hasItem(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter, @Nullable String customName) {
         String targetName = normalizeName(customName);
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
             if (getItemCustomName(item).equals(targetName)) return true;
         }
         return false;
     }
 
-    public int getItemCount(AutoKitItem otherItem, boolean enchantSensitive, @Nullable String customName) {
+    public int getItemCount(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter, @Nullable String customName) {
         int amount = 0;
         String targetName = normalizeName(customName);
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
             if (getItemCustomName(item).equals(targetName)) amount += item.getCount();
         }
         return amount;
     }
 
-    public Map<String, Integer> getMatchingItemCountsByName(AutoKitItem otherItem, boolean enchantSensitive) {
+    public Map<String, Integer> getMatchingItemCountsByName(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         Map<String, Integer> counts = new HashMap<>();
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
 
             String name = getItemCustomName(item);
             counts.put(name, counts.getOrDefault(name, 0) + item.getCount());
