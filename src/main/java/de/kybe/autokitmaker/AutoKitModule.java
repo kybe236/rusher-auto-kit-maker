@@ -89,7 +89,7 @@ public class AutoKitModule extends ToggleableModule {
     public static boolean isShulker(ItemStack item) {
         return item.getItem().getDescriptionId().contains("shulker_box");
     }
-    cd
+    
     boolean fullChest = false;
     @Subscribe
     @SuppressWarnings("unused")
