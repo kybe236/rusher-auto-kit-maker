@@ -58,7 +58,7 @@ public class KitManager {
         try (FileReader reader = new FileReader(file)) {
             return GSON.fromJson(reader, AutoKitInventory.class);
         } catch (IOException e) {
-            ChatUtils.print("Failed to load inventory: " + name  + " " + e);
+            ChatUtils.print("Failed to load inventory: " + name + " " + e);
             return null;
         }
     }

@@ -36,14 +36,14 @@ public class ChestInventory {
         expandItems();
     }
 
+    public List<ItemStack> getItems() {
+        return Collections.unmodifiableList(expandedItems);
+    }
+
     public void setItems(List<ItemStack> items) {
         this.items.clear();
         this.items.addAll(items);
         this.expandItems();
-    }
-
-    public List<ItemStack> getItems() {
-        return Collections.unmodifiableList(expandedItems);
     }
 
     public boolean hasItem(ItemStack otherItem) {
@@ -56,7 +56,8 @@ public class ChestInventory {
     public boolean hasItem(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter, @Nullable String customName) {
         String targetName = normalizeName(customName);
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter))
+                continue;
             if (getItemCustomName(item).equals(targetName)) return true;
         }
         return false;
@@ -66,7 +67,8 @@ public class ChestInventory {
         int amount = 0;
         String targetName = normalizeName(customName);
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter))
+                continue;
             if (getItemCustomName(item).equals(targetName)) amount += item.getCount();
         }
         return amount;
@@ -75,7 +77,8 @@ public class ChestInventory {
     public Map<String, Integer> getMatchingItemCountsByName(AutoKitItem otherItem, boolean enchantSensitive, boolean onlySpecificEnchantsMatterToggled, String onlySpecificEnchantsMatter) {
         Map<String, Integer> counts = new HashMap<>();
         for (ItemStack item : getItems()) {
-            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter)) continue;
+            if (!otherItem.matches(item, !enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter))
+                continue;
 
             String name = getItemCustomName(item);
             counts.put(name, counts.getOrDefault(name, 0) + item.getCount());

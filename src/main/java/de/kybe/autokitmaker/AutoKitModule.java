@@ -2,9 +2,7 @@ package de.kybe.autokitmaker;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ClientboundContainerClosePacket;
-import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
-import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -45,13 +43,16 @@ public class AutoKitModule extends ToggleableModule {
 
     private final StringSetting currentKit = new StringSetting("CurrentKit", "");
     private final NumberSetting<Integer> inventoryMoveDelay = new NumberSetting<>("InventoryMoveDelay", 5, 0, 20);
-    private final NumberSetting<Integer> afterChestOpenDelay = new NumberSetting<>("AfterChestOpenDelay", 5, 0, 20);
     private final BooleanSetting addChests = new BooleanSetting("Add Chests", true);
+    private final BooleanSetting autoClose = new BooleanSetting("Auto Close", true);
+
     private final BooleanSetting active = new BooleanSetting("Active", false);
 
     private final BooleanSetting enchantSensitive = new BooleanSetting("EnchantSensitive", false);
     private final BooleanSetting onlySpecificEnchantsMatterToggled = new BooleanSetting("Only Specific Enchants Matter Toggled", "Makes it so it only checks if the given enchant matches", true);
     private final StringSetting onlySpecificEnchantsMatter = new StringSetting("Only Specific Enchants that matter", "minecraft:fortune,minecraft:silk_touch");
+
+    private final BooleanSetting grimFix = new BooleanSetting("Grim Fix", true);
 
     private final BooleanSetting debug = new BooleanSetting("debug", false).setHidden(true);
 
@@ -60,17 +61,14 @@ public class AutoKitModule extends ToggleableModule {
     public BlockPos resultLocation = null;
     public BlockPos openChest = null;
     public BlockPos shulkerPlacedToTakeItemsOrigin = null;
-    private int ticksSinceLastMove = 0;
-    private int ticksSinceChestOpen = 0;
-
     public State state = State.Steal;
     public boolean shulkerPlacedToTakeItems = false;
-
     public ChestStoreManager chestStoreManager = new ChestStoreManager();
+    private int ticksSinceLastMove = 0;
 
     public AutoKitModule() {
         super("AutoKitMaker", ModuleCategory.CLIENT);
-        this.registerSettings(currentKit, addChests, active, inventoryMoveDelay, afterChestOpenDelay, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter, debug);
+        this.registerSettings(currentKit, addChests, autoClose, active, inventoryMoveDelay, grimFix, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter, debug);
 
         INSTANCE = this;
     }
@@ -91,7 +89,8 @@ public class AutoKitModule extends ToggleableModule {
     public static boolean isShulker(ItemStack item) {
         return item.getItem().getDescriptionId().contains("shulker_box");
     }
-
+    cd
+    boolean fullChest = false;
     @Subscribe
     @SuppressWarnings("unused")
     private void onPacketSend(EventPacket.Send event) {
@@ -100,18 +99,21 @@ public class AutoKitModule extends ToggleableModule {
             if (mc.level == null) return;
             if (mc.level.getBlockState(pos).getBlock() instanceof ChestBlock) {
                 openChest = pos;
-                ticksSinceChestOpen = 0;
+                fullChest = false;
             } else if (mc.level.getBlockState(pos).getBlock() instanceof ShulkerBoxBlock) {
                 openChest = pos;
-                ticksSinceChestOpen = 0;
+                fullChest = false;
             }
-        } else if (event.getPacket() instanceof ServerboundContainerClosePacket) openChest = null;
+        } else if (event.getPacket() instanceof ServerboundContainerClosePacket) fullChest = false;
     }
 
     @SuppressWarnings("unused")
     @Subscribe
     private void onPacketReceive(EventPacket.Receive event) {
-        if (event.getPacket() instanceof ClientboundContainerClosePacket) openChest = null;
+        if (event.getPacket() instanceof ClientboundContainerClosePacket) fullChest = false;
+        if (event.getPacket() instanceof ClientboundContainerSetContentPacket packet) {
+            if (packet.getContainerId() != 0 && packet.getStateId() == 1) fullChest = true;
+        }
     }
 
     public ChestInventory getChestInventoryFromScreen() {
@@ -128,12 +130,12 @@ public class AutoKitModule extends ToggleableModule {
 
     @Subscribe
     @SuppressWarnings({"unused", "DuplicatedCode"})
-    private void onUpdate(EventUpdate  event) {
+    private void onUpdate(EventUpdate event) {
         if (mc.player == null || mc.gameMode == null || mc.level == null)
             return;
 
         if (addChests.getValue()) {
-            if (openChest == null) return;
+            if (openChest == null || !fullChest) return;
             if (!(mc.player.containerMenu instanceof ChestMenu)) return;
             BlockState blockState = mc.level.getBlockState(openChest);
             if (blockState.getBlock() instanceof ChestBlock cb) {
@@ -151,6 +153,7 @@ public class AutoKitModule extends ToggleableModule {
                 if (chestStoreManager.getChest(openChest) != null) return;
                 chestStoreManager.addChest(chest);
             }
+            if (autoClose.getValue()) mc.player.closeContainer();
             return;
         }
 
@@ -182,15 +185,11 @@ public class AutoKitModule extends ToggleableModule {
             return;
         }
 
-        if (ticksSinceChestOpen < afterChestOpenDelay.getValue()) {
-            ticksSinceChestOpen++;
-            return;
-        }
-
         if (debug.getValue()) ChatUtils.print(state.toString());
         if (state == State.Steal) {
             switch (mc.player.containerMenu) {
                 case ChestMenu menu -> {
+                    if (!fullChest) return;
                     int size = menu.getContainer().getContainerSize();
                     int id = menu.containerId;
                     if (openChest == null) {
@@ -217,8 +216,10 @@ public class AutoKitModule extends ToggleableModule {
                             ItemStack innerItem = menu.slots.get(innerInvSlot).getItem();
                             if (innerItem.isEmpty()) continue;
                             int innerSlot = innerInvSlot - size;
-                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
-                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
+                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
                             if (!ItemStack.isSameItemSameComponents(item, innerItem) && !item.isEmpty()) continue;
 
                             mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
@@ -231,7 +232,8 @@ public class AutoKitModule extends ToggleableModule {
                         for (int upperSlot = size - 1; upperSlot >= 0; upperSlot--) {
                             ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                             if (slotItem.isEmpty()) continue;
-                            if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
                             if (!ItemStack.isSameItemSameComponents(item, slotItem) && !item.isEmpty()) continue;
 
                             int needed = slotItem.getMaxStackSize();
@@ -253,9 +255,12 @@ public class AutoKitModule extends ToggleableModule {
                         for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                             if (!isShulker(menu.slots.get(upperSlot).getItem())) continue;
                             List<ItemStack> items = Utils.getContainerItemsFromStack(menu.slots.get(upperSlot).getItem());
+                            assert items != null;
                             for (ItemStack item1 : items) {
+
                                 if (item1.isEmpty()) continue;
-                                if (!inv.getSafe(slot).matches(item1, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                                if (!inv.getSafe(slot).matches(item1, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                    continue;
                                 if (!ItemStack.isSameItemSameComponents(item, item1) && !item.isEmpty()) continue;
 
                                 int needed = item1.getMaxStackSize();
@@ -280,6 +285,7 @@ public class AutoKitModule extends ToggleableModule {
                     }
                 }
                 case ShulkerBoxMenu menu -> {
+                    if (!fullChest) return;
                     int size = 27; // CONTAINER_SIZE
 
                     int id = menu.containerId;
@@ -302,9 +308,11 @@ public class AutoKitModule extends ToggleableModule {
                         for (int innerInvSlot = size; innerInvSlot < menu.slots.size() - 9; innerInvSlot++) {
                             ItemStack innerItem = menu.slots.get(innerInvSlot).getItem();
                             if (innerItem.isEmpty()) continue;
-                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
                             int innerSlot = innerInvSlot - size;
-                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
 
                             mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
                             mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
@@ -316,7 +324,8 @@ public class AutoKitModule extends ToggleableModule {
                         for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                             ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                             if (slotItem.isEmpty()) continue;
-                            if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
                             if (!ItemStack.isSameItemSameComponents(item, slotItem) && !item.isEmpty()) continue;
 
                             int needed = slotItem.getMaxStackSize();
@@ -350,8 +359,10 @@ public class AutoKitModule extends ToggleableModule {
                             ItemStack innerItem = menu.slots.get(innerInvSlot).getItem();
                             int innerSlot = innerInvSlot - InventoryMenu.INV_SLOT_START;
                             if (innerItem.isEmpty()) continue;
-                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
-                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                            if (!inv.getSafe(slot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
+                            if (inv.getSafe(innerSlot).matches(innerItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                                continue;
                             if (!item.isEmpty() && !ItemStack.isSameItemSameComponents(item, innerItem)) continue;
 
                             mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
@@ -479,12 +490,14 @@ public class AutoKitModule extends ToggleableModule {
                 for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                     ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                     if (inv.getSafe(upperSlot) == null || inv.getSafe(upperSlot).isAir()) continue;
-                    if (inv.getSafe(upperSlot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                    if (inv.getSafe(upperSlot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                        continue;
 
                     for (int invSlot = size; invSlot < menu.slots.size() - 9; invSlot++) {
                         ItemStack item = menu.slots.get(invSlot).getItem();
                         if (item.isEmpty()) continue;
-                        if (!inv.getSafe(upperSlot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())) continue;
+                        if (!inv.getSafe(upperSlot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
+                            continue;
                         mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
                         mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
                         ticksSinceLastMove = 0;
@@ -632,7 +645,8 @@ public class AutoKitModule extends ToggleableModule {
         if (placeLocation != null) renderer.drawBox(placeLocation, false, true, red);
         if (emptyShulkerLocation != null) renderer.drawBox(emptyShulkerLocation, false, true, green);
         if (resultLocation != null) renderer.drawBox(resultLocation, false, true, yellow);
-        if (shulkerPlacedToTakeItemsOrigin != null) renderer.drawBox(shulkerPlacedToTakeItemsOrigin, false, true, orange);
+        if (shulkerPlacedToTakeItemsOrigin != null)
+            renderer.drawBox(shulkerPlacedToTakeItemsOrigin, false, true, orange);
 
         for (BlockPos chestPos : chestStoreManager.getChests()) {
             renderer.drawBox(chestPos, false, true, black);

@@ -51,7 +51,7 @@ public class AutoKitCommand extends Command {
             return "Please provide both original and new kit names.";
         }
         KitManager.rename(from, to);
-        return"Renamed kit from '" + from + "' to '" + to + "'.";
+        return "Renamed kit from '" + from + "' to '" + to + "'.";
     }
 
     @CommandExecutor(subCommand = "list-kits")
