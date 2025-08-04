@@ -1,13 +1,27 @@
 package de.kybe.autokitmaker;
 
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
+import static org.rusherhack.client.api.Globals.mc;
+
 public class ChestInventory {
     private final List<ItemStack> items = new ArrayList<>();
     private final List<ItemStack> expandedItems = new ArrayList<>();
+
+    public static ChestInventory getChestInventoryFromScreen() {
+        if (mc.player == null) return null;
+        if (!(mc.player.containerMenu instanceof ChestMenu chestMenu)) return null;
+        int size = chestMenu.getContainer().getContainerSize();
+        ChestInventory chestInventory = new ChestInventory();
+        for (int i = 0; i < size; i++) {
+            chestInventory.addItem(chestMenu.slots.get(i).getItem());
+        }
+        return chestInventory;
+    }
 
     private static String normalizeName(@Nullable String name) {
         return name == null ? "" : name;
@@ -20,7 +34,7 @@ public class ChestInventory {
     public void expandItems() {
         expandedItems.clear();
         for (ItemStack item : items) {
-            if (AutoKitModule.isShulker(item)) {
+            if (Utils.isShulker(item)) {
                 List<ItemStack> inner = Utils.getContainerItemsFromStack(item);
                 if (inner != null) {
                     expandedItems.addAll(inner);
