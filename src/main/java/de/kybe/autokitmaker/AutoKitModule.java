@@ -89,6 +89,11 @@ public class AutoKitModule extends ToggleableModule {
                 enchantSensitive,
                 onlySpecificEnchantsMatterToggled,
                 onlySpecificEnchantsMatter,
+                storageColor,
+                placeColor,
+                shulkerColor,
+                resultColor,
+                placedColor,
                 debug
         );
         INSTANCE = this;
