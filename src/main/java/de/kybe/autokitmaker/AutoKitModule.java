@@ -6,7 +6,10 @@ import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.inventory.*;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ShulkerBoxMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.ChestBlock;
@@ -22,7 +25,9 @@ import org.rusherhack.client.api.events.render.EventRender3D;
 import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
 import org.rusherhack.client.api.render.IRenderer3D;
+import org.rusherhack.client.api.setting.ColorSetting;
 import org.rusherhack.client.api.utils.ChatUtils;
+import org.rusherhack.core.event.stage.Stage;
 import org.rusherhack.core.event.subscribe.Subscribe;
 import org.rusherhack.core.setting.BooleanSetting;
 import org.rusherhack.core.setting.NumberSetting;
@@ -48,8 +53,15 @@ public class AutoKitModule extends ToggleableModule {
     private final BooleanSetting enchantSensitive = new BooleanSetting("EnchantSensitive", false);
     private final BooleanSetting onlySpecificEnchantsMatterToggled = new BooleanSetting("Only Specific Enchants Matter Toggled", "Makes it so it only checks if the given enchant matches", true);
     private final StringSetting onlySpecificEnchantsMatter = new StringSetting("Only Specific Enchants that matter", "minecraft:fortune,minecraft:silk_touch");
+    private final NumberSetting<Integer> afterOpenDelay = new NumberSetting<>("After Open Delay", 5, 0, 20);
 
     private final BooleanSetting grimFix = new BooleanSetting("Grim Fix", true);
+
+    private final ColorSetting storageColor = new ColorSetting("Sotrage Color", Color.BLACK);
+    private final ColorSetting placeColor = new ColorSetting("Place Pos Color", Color.RED);
+    private final ColorSetting shulkerColor = new ColorSetting("Shulker Chest Color", Color.GREEN);
+    private final ColorSetting resultColor = new ColorSetting("Result Chest Color", Color.YELLOW);
+    private final ColorSetting placedColor = new ColorSetting("Placed Shulker Color", Color.ORANGE);
 
     private final BooleanSetting debug = new BooleanSetting("debug", false).setHidden(true);
 
@@ -57,21 +69,28 @@ public class AutoKitModule extends ToggleableModule {
     public BlockPos resultLocation = null;
     public BlockPos emptyShulkerLocation = null;
     public BlockPos shulkerPlacedToTakeItemsOrigin = null;
-    private BlockPos openChest = null;
-
     public boolean shulkerPlacedToTakeItems = false;
-    private boolean fullChest = false;
-
     public ChestStoreManager chestStoreManager = new ChestStoreManager();
-
-    private int ticksSinceLastMove = 0;
-
     public State state = State.Steal;
+    private BlockPos openChest = null;
+    private boolean fullChest = false;
+    private int ticks = 0;
 
     public AutoKitModule() {
         super("AutoKitMaker", ModuleCategory.CLIENT);
-        this.registerSettings(currentKit, addChests, autoClose, active, inventoryMoveDelay, grimFix, enchantSensitive, onlySpecificEnchantsMatterToggled, onlySpecificEnchantsMatter, debug);
-
+        this.registerSettings(
+                currentKit,
+                addChests,
+                autoClose,
+                active,
+                inventoryMoveDelay,
+                grimFix,
+                afterOpenDelay,
+                enchantSensitive,
+                onlySpecificEnchantsMatterToggled,
+                onlySpecificEnchantsMatter,
+                debug
+        );
         INSTANCE = this;
     }
 
@@ -81,41 +100,43 @@ public class AutoKitModule extends ToggleableModule {
         if (event.getPacket() instanceof ServerboundUseItemOnPacket pkt) {
             if (mc.level == null) return;
             BlockPos pos = pkt.getHitResult().getBlockPos();
-            if (mc.level.getBlockState(pos).getBlock() instanceof ChestBlock || mc.level.getBlockState(pos).getBlock() instanceof ShulkerBoxBlock) {
+            if (mc.level.getBlockState(pos).getBlock() instanceof ChestBlock
+                    || mc.level.getBlockState(pos).getBlock() instanceof ShulkerBoxBlock) {
                 openChest = pos;
                 fullChest = false;
-                menu = null;
             }
         } else if (event.getPacket() instanceof ServerboundContainerClosePacket) {
             fullChest = false;
-            menu = null;
         }
     }
 
     @SuppressWarnings("unused")
-    @Subscribe
+    @Subscribe(stage = Stage.PRE)
     private void onPacketReceive(EventPacket.Receive event) {
         if (event.getPacket() instanceof ClientboundContainerClosePacket) {
-            menu = null;
             fullChest = false;
-        }
-        if (event.getPacket() instanceof ClientboundContainerSetContentPacket packet) {
+        } else if (event.getPacket() instanceof ClientboundContainerSetContentPacket packet) {
             if (packet.getContainerId() != 0 && packet.getStateId() == 1) fullChest = true;
+        } else if (event.getPacket() instanceof ClientboundContainerSetContentPacket packet) {
+            if (mc.player == null) return;
+            if (grimFix.getValue() && packet.getStateId() != 1 && packet.getContainerId() == mc.player.containerMenu.containerId)
+                event.setCancelled(true);
+        } else if (event.getPacket() instanceof ClientboundOpenScreenPacket) {
+            ticks = afterOpenDelay.getValue();
         }
     }
 
-
-    AbstractContainerMenu menu = null;
     @Subscribe
-    @SuppressWarnings({"unused", "DuplicatedCode", "PatternVariableHidesField"})
+    @SuppressWarnings({"unused", "DuplicatedCode"})
     private void onUpdate(EventUpdate event) {
         if (mc.player == null || mc.gameMode == null || mc.level == null)
             return;
 
-        if (menu instanceof ChestMenu) {
+        if (mc.player.containerMenu instanceof ChestMenu) {
             Chest chest = chestStoreManager.getChest(openChest);
             ChestInventory items = ChestInventory.getChestInventoryFromScreen();
-            if (items != null && chest != null) chest.inv.setItems(ChestInventory.getChestInventoryFromScreen().getItems());
+            if (items != null && chest != null)
+                chest.inv.setItems(ChestInventory.getChestInventoryFromScreen().getItems());
         }
 
         if (addChests.getValue() && !active.getValue()) {
@@ -125,16 +146,29 @@ public class AutoKitModule extends ToggleableModule {
             if (blockState.getBlock() instanceof ChestBlock cb) {
                 if (blockState.getValue(ChestBlock.TYPE) == ChestType.SINGLE) {
                     Chest chest = new Chest(ChestInventory.getChestInventoryFromScreen(), openChest);
-                    if (chestStoreManager.getChest(openChest) != null) {if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();return;}
+                    if (chestStoreManager.getChest(openChest) != null) {
+                        if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();
+                        return;
+                    }
                     chestStoreManager.addChest(chest);
                 } else {
-                    Chest chest = new Chest(ChestInventory.getChestInventoryFromScreen(), openChest, openChest.relative(ChestBlock.getConnectedDirection(blockState)));
-                    if (chestStoreManager.getChest(openChest) != null) {if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();return;}
+                    Chest chest = new Chest(
+                            ChestInventory.getChestInventoryFromScreen(),
+                            openChest,
+                            openChest.relative(ChestBlock.getConnectedDirection(blockState))
+                    );
+                    if (chestStoreManager.getChest(openChest) != null) {
+                        if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();
+                        return;
+                    }
                     chestStoreManager.addChest(chest);
                 }
             } else if (blockState.getBlock() instanceof BarrelBlock) {
                 Chest chest = new Chest(ChestInventory.getChestInventoryFromScreen(), openChest);
-                if (chestStoreManager.getChest(openChest) != null) {if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();return;}
+                if (chestStoreManager.getChest(openChest) != null) {
+                    if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();
+                    return;
+                }
                 chestStoreManager.addChest(chest);
             }
             if (autoClose.getValue() && mc.player.hasContainerOpen()) mc.player.closeContainer();
@@ -168,21 +202,15 @@ public class AutoKitModule extends ToggleableModule {
             return;
         }
 
-        if (ticksSinceLastMove < inventoryMoveDelay.getValue()) {
-            ticksSinceLastMove++;
+        if (ticks > 0) {
+            ticks--;
             return;
-        }
-
-        if (grimFix.getValue() && menu == null) {
-            menu = mc.player.containerMenu;
-        } else {
-            menu = mc.player.containerMenu;
         }
 
         if (debug.getValue()) ChatUtils.print(state.toString());
         switch (state) {
             case Steal -> {
-                switch (menu) {
+                switch (mc.player.containerMenu) {
                     case ChestMenu menu -> {
                         if (!fullChest) return;
                         int size = menu.getContainer().getContainerSize();
@@ -196,7 +224,8 @@ public class AutoKitModule extends ToggleableModule {
                             ItemStack item = menu.slots.get(invSlot).getItem();
                             int slot = invSlot - size;
                             if (inv.getSafe(slot) == null || inv.getSafe(slot).isAir()) continue;
-                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()) && item.getMaxStackSize() == item.getCount())
+                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())
+                                    && item.getMaxStackSize() == item.getCount())
                                 continue;
 
                             for (int innerInvSlot = size; innerInvSlot < menu.slots.size() - 9; innerInvSlot++) {
@@ -213,11 +242,11 @@ public class AutoKitModule extends ToggleableModule {
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 return;
                             }
 
-                            for (int upperSlot = size - 1; upperSlot >= 0; upperSlot--) {
+                            for (int upperSlot = 0; upperSlot < size; upperSlot++) {
                                 ItemStack slotItem = menu.slots.get(upperSlot).getItem();
                                 if (slotItem.isEmpty()) continue;
                                 if (!inv.getSafe(slot).matches(slotItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
@@ -236,7 +265,7 @@ public class AutoKitModule extends ToggleableModule {
                                 mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 return;
                             }
 
@@ -245,7 +274,6 @@ public class AutoKitModule extends ToggleableModule {
                                 List<ItemStack> items = Utils.getContainerItemsFromStack(menu.slots.get(upperSlot).getItem());
                                 assert items != null;
                                 for (ItemStack item1 : items) {
-
                                     if (item1.isEmpty()) continue;
                                     if (!inv.getSafe(slot).matches(item1, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()))
                                         continue;
@@ -262,7 +290,7 @@ public class AutoKitModule extends ToggleableModule {
 
                                     mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
                                     mc.gameMode.handleInventoryMouseClick(id, menu.slots.size() - 9 + 1, 0, ClickType.PICKUP, mc.player);
-                                    ticksSinceLastMove = 0;
+                                    ticks = inventoryMoveDelay.getValue();
                                     shulkerPlacedToTakeItems = true;
                                     shulkerPlacedToTakeItemsOrigin = openChest;
                                     state = State.PlaceShulker;
@@ -275,14 +303,14 @@ public class AutoKitModule extends ToggleableModule {
                     case ShulkerBoxMenu menu -> {
                         if (!fullChest) return;
                         int size = 27;
-
                         int id = menu.containerId;
 
                         for (int invSlot = size; invSlot < menu.slots.size() - 9; invSlot++) {
                             ItemStack item = menu.slots.get(invSlot).getItem();
                             int slot = invSlot - size;
                             if (inv.getSafe(slot) == null || inv.getSafe(slot).isAir()) continue;
-                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()) && item.getMaxStackSize() == item.getCount())
+                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())
+                                    && item.getMaxStackSize() == item.getCount())
                                 continue;
 
                             ArrayList<ItemStack> extraList = new ArrayList<>();
@@ -305,7 +333,7 @@ public class AutoKitModule extends ToggleableModule {
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 return;
                             }
 
@@ -326,12 +354,9 @@ public class AutoKitModule extends ToggleableModule {
                                 }
 
                                 mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(upperSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(invSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(upperSlot, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 return;
                             }
                         }
@@ -343,7 +368,8 @@ public class AutoKitModule extends ToggleableModule {
                             ItemStack item = menu.slots.get(invSlot).getItem();
                             int slot = invSlot - InventoryMenu.INV_SLOT_START;
                             if (inv.getSafe(slot) == null || inv.getSafe(slot).isAir()) continue;
-                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()) && item.getMaxStackSize() == item.getCount())
+                            if (inv.getSafe(slot).matches(item, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())
+                                    && item.getMaxStackSize() == item.getCount())
                                 continue;
 
                             for (int innerInvSlot = InventoryMenu.INV_SLOT_START; innerInvSlot < InventoryMenu.INV_SLOT_END; innerInvSlot++) {
@@ -357,12 +383,9 @@ public class AutoKitModule extends ToggleableModule {
                                 if (!item.isEmpty() && !ItemStack.isSameItemSameComponents(item, innerItem)) continue;
 
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(innerInvSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(invSlot, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, innerInvSlot, 0, ClickType.PICKUP, mc.player);
-                                if (grimFix.getValue()) menu.clicked(innerInvSlot, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 return;
                             }
                         }
@@ -405,6 +428,7 @@ public class AutoKitModule extends ToggleableModule {
                 if (item.isEmpty()) {
                     if (mc.player.position().distanceTo(emptyShulkerLocation.getCenter()) < 4.5) {
                         if (mc.player.containerMenu instanceof ChestMenu menu) {
+                            if (!fullChest) return;
                             int size = menu.getContainer().getContainerSize();
                             int id = menu.containerId;
 
@@ -412,7 +436,7 @@ public class AutoKitModule extends ToggleableModule {
                                 if (!Utils.isShulker(menu.slots.get(i).getItem())) continue;
                                 mc.gameMode.handleInventoryMouseClick(id, i, 0, ClickType.PICKUP, mc.player);
                                 mc.gameMode.handleInventoryMouseClick(id, size + 9 * 3 + 1, 0, ClickType.PICKUP, mc.player);
-                                ticksSinceLastMove = 0;
+                                ticks = inventoryMoveDelay.getValue();
                                 if (mc.player.hasContainerOpen()) mc.player.closeContainer();
                                 return;
                             }
@@ -438,7 +462,10 @@ public class AutoKitModule extends ToggleableModule {
             case PlaceShulker -> {
                 if (mc.level.getBlockState(placeLocation).getBlock() instanceof ShulkerBoxBlock) {
                     if (shulkerPlacedToTakeItems) {
-                        boolean res = RusherHackAPI.interactions().useBlock(placeLocation, InteractionHand.MAIN_HAND, false, false);
+                        BlockHitResult hr = RusherHackAPI.interactions().getBlockHitResult(placeLocation, false, false, mc.player.blockInteractionRange());
+                        if (hr == null) return;
+                        RusherHackAPI.getRotationManager().updateRotation(hr, 180);
+                        boolean res = RusherHackAPI.interactions().useBlock(hr, InteractionHand.MAIN_HAND, true);
                         if (!res) {
                             ChatUtils.print("Unable to open Result Chest");
                             return;
@@ -465,7 +492,7 @@ public class AutoKitModule extends ToggleableModule {
                 if (mc.player.position().distanceTo(placeLocation.getCenter()) < 4) {
                     if (mc.player.getInventory().selected != 1) {
                         mc.player.getInventory().selected = 1;
-                        ticksSinceLastMove = 0;
+                        ticks = inventoryMoveDelay.getValue();
                         return;
                     }
                     BlockHitResult res = RusherHackAPI.interactions().getBlockPlaceHitResult(placeLocation, false, false, 4);
@@ -498,7 +525,7 @@ public class AutoKitModule extends ToggleableModule {
                                 continue;
                             mc.gameMode.handleInventoryMouseClick(id, invSlot, 0, ClickType.PICKUP, mc.player);
                             mc.gameMode.handleInventoryMouseClick(id, upperSlot, 0, ClickType.PICKUP, mc.player);
-                            ticksSinceLastMove = 0;
+                            ticks = inventoryMoveDelay.getValue();
                             return;
                         }
                     }
@@ -528,7 +555,7 @@ public class AutoKitModule extends ToggleableModule {
                 if (!mc.level.getBlockState(placeLocation).isAir()) {
                     if (mc.player.getInventory().selected != 0) {
                         mc.player.getInventory().selected = 0;
-                        ticksSinceLastMove = 0;
+                        ticks = inventoryMoveDelay.getValue();
                         return;
                     }
                     mc.gameMode.continueDestroyBlock(placeLocation, Utils.getDirection(placeLocation));
@@ -539,12 +566,11 @@ public class AutoKitModule extends ToggleableModule {
                 if (mc.player.getEyePosition().distanceTo(resultLocation.getCenter()) < 4.5) {
                     if (mc.player.containerMenu instanceof ChestMenu menu) {
                         int id = menu.containerId;
-
                         int shulker = menu.slots.size() - 9 + 1;
 
                         mc.gameMode.handleInventoryMouseClick(id, shulker, 0, ClickType.QUICK_MOVE, mc.player);
                         if (mc.player.hasContainerOpen()) mc.player.closeContainer();
-                        ticksSinceLastMove = 0;
+                        ticks = inventoryMoveDelay.getValue();
                         this.state = State.Steal;
                         return;
                     }
@@ -563,7 +589,8 @@ public class AutoKitModule extends ToggleableModule {
                     ItemStack invItem = mc.player.getInventory().getItem(i);
                     AutoKitItem kitItem = inv.getSafe(i - 9);
 
-                    if (!kitItem.matches(invItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue()) && !kitItem.isAir()) {
+                    if (!kitItem.matches(invItem, !enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue())
+                            && !kitItem.isAir()) {
                         neededItem = kitItem;
                         break;
                     }
@@ -580,7 +607,13 @@ public class AutoKitModule extends ToggleableModule {
                     return;
                 }
 
-                Optional<List<BlockPos>> target = chestStoreManager.getChest(neededItem, enchantSensitive.getValue(), onlySpecificEnchantsMatterToggled.getValue(), onlySpecificEnchantsMatter.getValue(), neededAmount == -1 ? neededItem.maxStackCount : neededAmount);
+                Optional<List<BlockPos>> target = chestStoreManager.getChest(
+                        neededItem,
+                        enchantSensitive.getValue(),
+                        onlySpecificEnchantsMatterToggled.getValue(),
+                        onlySpecificEnchantsMatter.getValue(),
+                        neededAmount == -1 ? neededItem.maxStackCount : neededAmount
+                );
                 if (target.isEmpty()) {
                     ChatUtils.print("Storage doesn't have enough " + neededItem.item);
                     return;
@@ -600,8 +633,10 @@ public class AutoKitModule extends ToggleableModule {
                     }
                 }
 
-                if (target.get().size() == 2) BaritoneUtils.gotoDoubleChest(target.get().get(0), target.get().get(1));
-                else BaritoneUtils.gotoChest(target.get().getFirst());
+                if (target.get().size() == 2)
+                    BaritoneUtils.gotoDoubleChest(target.get().get(0), target.get().get(1));
+                else
+                    BaritoneUtils.gotoChest(target.get().getFirst());
             }
             case BringShulkerBack -> {
                 if (shulkerPlacedToTakeItemsOrigin == null) {
@@ -611,13 +646,12 @@ public class AutoKitModule extends ToggleableModule {
                 if (mc.player.getEyePosition().distanceTo(shulkerPlacedToTakeItemsOrigin.getCenter()) < 4.5) {
                     if (mc.player.containerMenu instanceof ChestMenu menu) {
                         int id = menu.containerId;
-
                         int shulker = menu.slots.size() - 9 + 1;
 
                         mc.gameMode.handleInventoryMouseClick(id, shulker, 0, ClickType.QUICK_MOVE, mc.player);
                         shulkerPlacedToTakeItems = false;
                         shulkerPlacedToTakeItemsOrigin = null;
-                        ticksSinceLastMove = 0;
+                        ticks = inventoryMoveDelay.getValue();
                         this.state = State.Steal;
                         return;
                     }
@@ -639,22 +673,22 @@ public class AutoKitModule extends ToggleableModule {
     public void onRender3D(EventRender3D event) {
         final IRenderer3D renderer = event.getRenderer();
 
-        final int black = ColorUtils.transparency(Color.BLACK.getRGB(), 0.5f);
-        final int red = ColorUtils.transparency(Color.RED.getRGB(), 0.5f);
-        final int green = ColorUtils.transparency(Color.GREEN.getRGB(), 0.5f);
-        final int yellow = ColorUtils.transparency(Color.YELLOW.getRGB(), 0.5f);
-        final int orange = ColorUtils.transparency(Color.ORANGE.getRGB(), 0.5f);
+        final int storageColorRGB = ColorUtils.transparency(storageColor.getValueRGB(), 0.5f);
+        final int placeColorRGB = ColorUtils.transparency(placeColor.getValueRGB(), 0.5f);
+        final int shulkerColorRGB = ColorUtils.transparency(shulkerColor.getValueRGB(), 0.5f);
+        final int resultColorRGB = ColorUtils.transparency(resultColor.getValueRGB(), 0.5f);
+        final int placedColorRGB = ColorUtils.transparency(placedColor.getValueRGB(), 0.5f);
 
         renderer.begin(event.getMatrixStack());
 
-        if (placeLocation != null) renderer.drawBox(placeLocation, false, true, red);
-        if (emptyShulkerLocation != null) renderer.drawBox(emptyShulkerLocation, false, true, green);
-        if (resultLocation != null) renderer.drawBox(resultLocation, false, true, yellow);
+        if (placeLocation != null) renderer.drawBox(placeLocation, false, true, placeColorRGB);
+        if (emptyShulkerLocation != null) renderer.drawBox(emptyShulkerLocation, false, true, shulkerColorRGB);
+        if (resultLocation != null) renderer.drawBox(resultLocation, false, true, resultColorRGB);
         if (shulkerPlacedToTakeItemsOrigin != null)
-            renderer.drawBox(shulkerPlacedToTakeItemsOrigin, false, true, orange);
+            renderer.drawBox(shulkerPlacedToTakeItemsOrigin, false, true, placedColorRGB);
 
         for (BlockPos chestPos : chestStoreManager.getChests()) {
-            renderer.drawBox(chestPos, false, true, black);
+            renderer.drawBox(chestPos, false, true, storageColorRGB);
         }
 
         renderer.end();
