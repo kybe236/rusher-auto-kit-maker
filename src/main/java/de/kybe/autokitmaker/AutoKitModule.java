@@ -30,6 +30,7 @@ import org.rusherhack.client.api.utils.ChatUtils;
 import org.rusherhack.core.event.stage.Stage;
 import org.rusherhack.core.event.subscribe.Subscribe;
 import org.rusherhack.core.setting.BooleanSetting;
+import org.rusherhack.core.setting.NullSetting;
 import org.rusherhack.core.setting.NumberSetting;
 import org.rusherhack.core.setting.StringSetting;
 import org.rusherhack.core.utils.ColorUtils;
@@ -57,11 +58,12 @@ public class AutoKitModule extends ToggleableModule {
 
     private final BooleanSetting grimFix = new BooleanSetting("Grim Fix", true);
 
-    private final ColorSetting storageColor = new ColorSetting("Sotrage Color", Color.BLACK);
-    private final ColorSetting placeColor = new ColorSetting("Place Pos Color", Color.RED);
-    private final ColorSetting shulkerColor = new ColorSetting("Shulker Chest Color", Color.GREEN);
-    private final ColorSetting resultColor = new ColorSetting("Result Chest Color", Color.YELLOW);
-    private final ColorSetting placedColor = new ColorSetting("Placed Shulker Color", Color.ORANGE);
+    private final NullSetting colors = new NullSetting("Colors");
+    private final ColorSetting storageColor = new ColorSetting("Storage", Color.BLACK);
+    private final ColorSetting placeColor = new ColorSetting("Place Pos", Color.RED);
+    private final ColorSetting shulkerColor = new ColorSetting("Shulker Chest", Color.GREEN);
+    private final ColorSetting resultColor = new ColorSetting("Result Chest", Color.YELLOW);
+    private final ColorSetting placedColor = new ColorSetting("Placed Shulker", Color.ORANGE);
 
     private final BooleanSetting debug = new BooleanSetting("debug", false).setHidden(true);
 
@@ -78,6 +80,8 @@ public class AutoKitModule extends ToggleableModule {
 
     public AutoKitModule() {
         super("AutoKitMaker", ModuleCategory.CLIENT);
+
+        colors.addSubSettings(storageColor, placeColor, shulkerColor, resultColor, placedColor);
         this.registerSettings(
                 currentKit,
                 addChests,
@@ -89,11 +93,7 @@ public class AutoKitModule extends ToggleableModule {
                 enchantSensitive,
                 onlySpecificEnchantsMatterToggled,
                 onlySpecificEnchantsMatter,
-                storageColor,
-                placeColor,
-                shulkerColor,
-                resultColor,
-                placedColor,
+                colors,
                 debug
         );
         INSTANCE = this;
